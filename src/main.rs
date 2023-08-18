@@ -11,13 +11,6 @@ use morton_encoding::morton_encode;
 //In the center of the main quad, a bitwise inverse of a leaf gives the coord of the closest opposite leaf in the other quad.
 //For subquads, its a bitwise inverse of the least 4 significant bits.
 
-#[derive(Debug)]
-enum SortOder {
-    RowMajor,
-    Morton,
-    MortonXOffset,
-    MortonYOffset,
-}
 
 fn main() {
     macroquad::Window::from_config(
@@ -39,26 +32,14 @@ async fn amain() {
         },
     );
 
-    let mut sort_order = SortOder::RowMajor;
-
     loop {
         mq::clear_background(mq::BLACK);
 
-        //Change the sort order
-        if mq::is_key_pressed(mq::KeyCode::Space) {
-            sort_order = match sort_order {
-                SortOder::RowMajor => SortOder::Morton,
-                SortOder::Morton => SortOder::MortonXOffset,
-                SortOder::MortonXOffset => SortOder::Morton,
-                SortOder::MortonYOffset => SortOder::Morton,
-            }
-        }
-        sort(&mut grid_coords, &sort_order);
+        sort(&mut grid_coords);
         draw_gridcells(&grid_coords);
         draw_ids(&grid_coords);
         draw_lines(&mut grid_coords);
         draw_highlights(&mut grid_coords);
-        mq::draw_text(&format!("{:?}", sort_order), 100.0, 100.0, 32.0, mq::GREEN);
 
         mq::next_frame().await
     }
@@ -104,20 +85,9 @@ fn draw_ids(grid_coords: &Vec<(u32, u32)>) {
     }
 }
 
-fn sort(grid_coords: &mut Vec<(u32, u32)>, sort_order: &SortOder) {
-    grid_coords.sort_by(|(x1, y1), (x2, y2)| match sort_order {
-        SortOder::RowMajor => x1.cmp(x2).then(y1.cmp(y2)),
-        SortOder::Morton => morton_encode([*x1, *y1]).cmp(&morton_encode([*x2, *y2])),
-        SortOder::MortonXOffset => {
-            let (x1, y1) = (*x1 + 1, *y1);
-            let (x2, y2) = (*x2 + 1, *y2);
-            morton_encode([x1, y1]).cmp(&morton_encode([x2, y2]))
-        }
-        SortOder::MortonYOffset => {
-            let (x1, y1) = (*x1, *y1 + 1);
-            let (x2, y2) = (*x2, *y2 + 1);
-            morton_encode([x1, y1]).cmp(&morton_encode([x2, y2]))
-        }
+fn sort(grid_coords: &mut Vec<(u32, u32)>) {
+    grid_coords.sort_by(|(x1, y1), (x2, y2)| {
+        morton_encode([*x1, *y1]).cmp(&morton_encode([*x2, *y2]))
     });
 }
 
